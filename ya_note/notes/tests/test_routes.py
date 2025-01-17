@@ -13,20 +13,19 @@ class TestRoutes(TestCase):
     """
     @classmethod
     def setUpTestData(cls):
-        # Создаём пользователей:
         cls.author = User.objects.create(username='Автор')
         cls.not_author = User.objects.create(username='Читатель')
-        # Создаём клиенты для пользователей:
+
         cls.author_client = Client()
         cls.not_author_client = Client()
-        # Авторизируем клиенты:
+
         cls.author_client.force_login(cls.author)
         cls.not_author_client.force_login(cls.not_author)
-        # От лица автора создаём заметку:
+
         cls.note = Note.objects.create(author=cls.author,
                                        title='Заголовок',
                                        text='Текст',
-                                       slug='note_1')
+                                       slug='note_slug')
 
         # Страница создания заметки.
         cls.add_url = reverse('notes:add')
@@ -59,8 +58,8 @@ class TestRoutes(TestCase):
                     self.logout_url,
                     self.signup_url,):
             with self.subTest(url=url):
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, HTTPStatus.OK)
+                self.assertEqual(
+                    self.client.get(url).status_code, HTTPStatus.OK)
 
     def test_availability_for_note_edit_and_delete(self):
         """
@@ -75,8 +74,7 @@ class TestRoutes(TestCase):
                         self.edit_url,
                         self.delete_url):
                 with self.subTest(url=url):
-                    response = client.get(url)
-                    self.assertEqual(response.status_code, status)
+                    self.assertEqual(client.get(url).status_code, status)
 
     def test_availability_for_add_list_and_success(self):
         """
@@ -93,8 +91,7 @@ class TestRoutes(TestCase):
                         self.list_url,
                         self.success_url):
                 with self.subTest(url=url):
-                    response = client.get(url)
-                    self.assertEqual(response.status_code, status)
+                    self.assertEqual(client.get(url).status_code, status)
 
     def test_redirect_for_anonymous_client(self):
         """
@@ -109,6 +106,5 @@ class TestRoutes(TestCase):
                     self.delete_url,
                     self.list_url):
             with self.subTest(url=url):
-                redirect_url = f'{self.login_url}?next={url}'
-                response = self.client.get(url)
-                self.assertRedirects(response, redirect_url)
+                self.assertRedirects(
+                    self.client.get(url), f'{self.login_url}?next={url}')

@@ -1,6 +1,5 @@
-from django.urls import reverse
 from django.conf import settings
-
+from django.urls import reverse
 import pytest
 
 from news.forms import CommentForm
@@ -11,13 +10,10 @@ from news.forms import CommentForm
 def test_news_count(client):
     """
     Тест для проверки количества объектов (новостей)
-    выводимых на главную страницу
+    выводимых на главную страницу (не более 10).
     """
-    url = reverse('news:home')
-    response = client.get(url)
-    object_list = response.context['object_list']
-    news_count = object_list.count()
-    assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
+    assert client.get(reverse('news:home')).context['object_list'].count() == \
+        settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 @pytest.mark.django_db()
@@ -26,10 +22,8 @@ def test_news_order(client):
     Тест для проверки сортировки отображаемых
     новостей (от самой свежей к самой старой).
     """
-    url = reverse('news:home')
-    response = client.get(url)
-    object_list = response.context['object_list']
-    all_dates = [news.date for news in object_list]
+    all_dates = [news.date for news in
+                 client.get(reverse('news:home')).context['object_list']]
     assert all_dates == sorted(all_dates, reverse=True)
 
 
@@ -39,12 +33,10 @@ def test_comments_order(client, id_for_args):
     Тест для проверки сортировки отображаемых
     коментариев (от старых к новым).
     """
-    url = reverse('news:detail', args=id_for_args)
-    response = client.get(url)
+    response = client.get(reverse('news:detail', args=id_for_args))
     assert 'news' in response.context
-    news = response.context['news']
-    all_comments = news.comment_set.all()
-    all_timestamps = [comment.created for comment in all_comments]
+    all_timestamps = [comment.created for comment in
+                      response.context['news'].comment_set.all()]
     assert all_timestamps == sorted(all_timestamps)
 
 
