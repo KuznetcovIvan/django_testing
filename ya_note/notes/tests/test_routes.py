@@ -1,97 +1,42 @@
 from http import HTTPStatus
 
-from django.test import Client, TestCase
-from django.urls import reverse
-
-from notes.models import Note, User
+import notes.tests.conftest as conf
 
 
-class TestRoutes(TestCase):
+class TestRoutes(conf.TestBase):
     """
     Набор тестов для проверки доступности
     маршрутов приложения notes.
     """
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.not_author = User.objects.create(username='Читатель')
-
-        cls.author_client = Client()
-        cls.not_author_client = Client()
-
-        cls.author_client.force_login(cls.author)
-        cls.not_author_client.force_login(cls.not_author)
-
-        cls.note = Note.objects.create(author=cls.author,
-                                       title='Заголовок',
-                                       text='Текст',
-                                       slug='note_slug')
-
-        # Страница создания заметки.
-        cls.add_url = reverse('notes:add')
-        # Страница удаления заметки.
-        cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
-        # Страница заметки подробно.
-        cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
-        # Страница редактирования заметки.
-        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
-        # Домашняя страница.
-        cls.home_url = reverse('notes:home')
-        # Страница всех заметок.
-        cls.list_url = reverse('notes:list')
-        # Страница успешного выполнения.
-        cls.success_url = reverse('notes:success')
-        # Страница входа под учётной записью.
-        cls.login_url = reverse('users:login')
-        # Страница выхода из учётной записи.
-        cls.logout_url = reverse('users:logout')
-        # Страница регистрации.
-        cls.signup_url = reverse('users:signup')
 
     def test_pages_availability(self):
         """
         Тест проверяет доступность страниц
-        анонимному пользователю.
+        различным категориям пользователей.
         """
-        for url in (self.home_url,
-                    self.login_url,
-                    self.logout_url,
-                    self.signup_url,):
-            with self.subTest(url=url):
-                self.assertEqual(
-                    self.client.get(url).status_code, HTTPStatus.OK)
-
-    def test_availability_for_note_edit_and_delete(self):
-        """
-        Тест проверяет доступность страниц просмотра, редактирования
-        и удаления заметки автору (и недоступность не автору).
-        """
-        client_statuses = ((self.author_client, HTTPStatus.OK),
-                           (self.not_author_client, HTTPStatus.NOT_FOUND))
-
-        for client, status in client_statuses:
-            for url in (self.detail_url,
-                        self.edit_url,
-                        self.delete_url):
-                with self.subTest(url=url):
-                    self.assertEqual(client.get(url).status_code, status)
-
-    def test_availability_for_add_list_and_success(self):
-        """
-        Тест проверяет доступность страниц
-        добавления заметки, списка заметок, успешного выполнения
-        для авторизированного пользователя (и недоступность анонимному
-        пользователю).
-        """
-        client_status = ((self.client, HTTPStatus.FOUND),
-                         (self.author_client, HTTPStatus.OK))
-
-        for client, status in client_status:
-            for url in (self.add_url,
-                        self.list_url,
-                        self.success_url):
-                with self.subTest(url=url):
-                    self.assertEqual(client.get(url).status_code, status)
+        for url, client, expected_status in (
+            (conf.ADD_URL, self.author_client, HTTPStatus.OK),
+            (conf.ADD_URL, self.client, HTTPStatus.FOUND),
+            (conf.DELETE_URL, self.author_client, HTTPStatus.OK),
+            (conf.DELETE_URL, self.not_author_client, HTTPStatus.NOT_FOUND),
+            (conf.DELETE_URL, self.client, HTTPStatus.FOUND),
+            (conf.DETAIL_URL, self.author_client, HTTPStatus.OK),
+            (conf.DETAIL_URL, self.not_author_client, HTTPStatus.NOT_FOUND),
+            (conf.DETAIL_URL, self.client, HTTPStatus.FOUND),
+            (conf.EDIT_URL, self.author_client, HTTPStatus.OK),
+            (conf.EDIT_URL, self.not_author_client, HTTPStatus.NOT_FOUND),
+            (conf.EDIT_URL, self.client, HTTPStatus.FOUND),
+            (conf.HOME_URL, self.client, HTTPStatus.OK),
+            (conf.LIST_URL, self.author_client, HTTPStatus.OK),
+            (conf.LIST_URL, self.client, HTTPStatus.FOUND),
+            (conf.LOGIN_URL, self.client, HTTPStatus.OK),
+            (conf.LOGOUT_URL, self.client, HTTPStatus.OK),
+            (conf.SIGNUP_URL, self.client, HTTPStatus.OK),
+            (conf.SUCCESS_URL, self.author_client, HTTPStatus.OK),
+            (conf.SUCCESS_URL, self.client, HTTPStatus.FOUND),
+        ):
+            with self.subTest(url=url, client=client):
+                self.assertEqual(client.get(url).status_code, expected_status)
 
     def test_redirect_for_anonymous_client(self):
         """
@@ -99,12 +44,14 @@ class TestRoutes(TestCase):
         на страницы, предназначенные для авторизованных пользователей,
         он должен быть перенаправлен на страницу входа в учетную запись.
         """
-        for url in (self.success_url,
-                    self.add_url,
-                    self.detail_url,
-                    self.edit_url,
-                    self.delete_url,
-                    self.list_url):
+        for url, redirect_url in (
+            (conf.SUCCESS_URL, conf.REDIRECT_TO_SUCCESS),
+            (conf.ADD_URL, conf.REDIRECT_TO_ADD),
+            (conf.DETAIL_URL, conf.REDIRECT_TO_DETAIL),
+            (conf.EDIT_URL, conf.REDIRECT_TO_EDIT),
+            (conf.DELETE_URL, conf.REDIRECT_TO_DELETE),
+            (conf.LIST_URL, conf.REDIRECT_TO_LIST),
+        ):
             with self.subTest(url=url):
                 self.assertRedirects(
-                    self.client.get(url), f'{self.login_url}?next={url}')
+                    self.client.get(url), redirect_url)

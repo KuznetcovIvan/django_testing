@@ -1,14 +1,17 @@
+import os
 from pathlib import Path
-
 from django.urls import reverse_lazy
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-yipnj$#j!ajarq%k55z4kuf3x79)91h0h42o9!1ho(z=!%mt=#'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-this-is-a-test-key-for-development-only')
 
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').split()
 
 
 INSTALLED_APPS = [

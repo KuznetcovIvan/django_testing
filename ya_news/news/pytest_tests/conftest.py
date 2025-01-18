@@ -1,38 +1,25 @@
 from datetime import datetime, timedelta
 
+import pytest
 from django.conf import settings
 from django.test.client import Client
+from django.urls import reverse
 from django.utils import timezone
-import pytest
-
-from news.forms import BAD_WORDS
 from news.models import Comment, News
 
 
 @pytest.fixture
 def author(django_user_model):
-    """
-    Фикстура для создания пользователя
-    с именем 'Автор'.
-    """
     return django_user_model.objects.create(username='Автор')
 
 
 @pytest.fixture
 def reader(django_user_model):
-    """
-    Фикстура для создания пользователя
-    с именем 'Читатель'.
-    """
     return django_user_model.objects.create(username='Читатель')
 
 
 @pytest.fixture
 def author_client(author):
-    """
-    Фикстура для создания клиента,
-    авторизованного как 'Автор'.
-    """
     client = Client()
     client.force_login(author)
     return client
@@ -40,10 +27,6 @@ def author_client(author):
 
 @pytest.fixture
 def reader_client(reader):
-    """
-    Фикстура для создания клиента,
-    авторизованного как 'Читатель'.
-    """
     client = Client()
     client.force_login(reader)
     return client
@@ -51,47 +34,28 @@ def reader_client(reader):
 
 @pytest.fixture
 def news():
-    """
-    Фикстура для
-    создания новости.
-    """
-    news = News.objects.create(title='Заголовок', text='Текст')
-    return news
+    return News.objects.create(title='Заголовок', text='Текст')
 
 
 @pytest.fixture
 def news_collection():
-    """
-    Фикстура для создания
-    коллекции новостей.
-    """
     today = datetime.today()
-    return News.objects.bulk_create(
+    News.objects.bulk_create(
         News(title=f'Новость {index}',
              text='Текст',
              date=today - timedelta(days=index)
-             ) for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    )
+             ) for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1))
 
 
 @pytest.fixture
 def comment(author, news):
-    """
-    Фикстура для
-    создания комментария.
-    """
-    comment = Comment.objects.create(news=news,
-                                     author=author,
-                                     text='Текст')
-    return comment
+    return Comment.objects.create(news=news,
+                                  author=author,
+                                  text='Текст')
 
 
 @pytest.fixture
 def comments_collection(news, author):
-    """
-    Фикстура для создания
-    коллекции коментариев.
-    """
     now = timezone.now()
     for index in range(10):
         comment = Comment.objects.create(news=news,
@@ -99,34 +63,58 @@ def comments_collection(news, author):
                                          text=f'Текст {index}')
         comment.created = now + timedelta(days=index)
         comment.save()
-    return Comment.objects.filter(news=news)
 
 
 @pytest.fixture
-def id_for_args(news):
-    """
-    Фикстура для получения id
-    созданной новости в виде кортежа.
-    """
-    return (news.id,)
+def news_home_url():
+    return reverse('news:home')
 
 
 @pytest.fixture
-def form_data():
-    """
-    Фикстура возвращающая словарь с данными
-    для создания объекта Comment.
-    (Значения в этом словаре отличаются от значений
-    полей объекта фикстуры comment)
-    """
-    return {'text': 'Новый текст'}
+def users_login_url():
+    return reverse('users:login')
 
 
 @pytest.fixture
-def bad_words_data():
-    """
-    Фикстура возвращающая словарь с данными
-    для создания объекта Comment, где поле 'text'
-    содержит не допустимые слова.
-    """
-    return {'text': f'Текст со словом - {BAD_WORDS[0]}.'}
+def users_logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def users_signup_url():
+    return reverse('users:signup')
+
+
+@pytest.fixture
+def news_detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def news_edit_url(comment):
+    return reverse('news:edit', args=(comment.id,))
+
+
+@pytest.fixture
+def news_delete_url(comment):
+    return reverse('news:delete', args=(comment.id,))
+
+
+@pytest.fixture
+def redirect_to_news_edit(users_login_url, news_edit_url):
+    return f'{users_login_url}?next={news_edit_url}'
+
+
+@pytest.fixture
+def redirect_to_news_delete(users_login_url, news_delete_url):
+    return f'{users_login_url}?next={news_delete_url}'
+
+
+@pytest.fixture
+def redirect_to_news_detail(users_login_url, news_detail_url):
+    return f'{users_login_url}?next={news_detail_url}'
+
+
+@pytest.fixture
+def redirect_to_comments(news_detail_url):
+    return f'{news_detail_url}#comments'
